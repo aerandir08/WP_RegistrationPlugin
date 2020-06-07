@@ -77,20 +77,53 @@ class Registrator
 
 
     // Returns number of subscribers of current day with given age
-    function getSubscribers($age)
+    function getSubscribers()
     {
+        global $wpdb;
+        $table_name = $wpdb->prefix . "registration";
 
+        $subscribers = $wpdb->get_results('SELECT * FROM ' . $table_name);
+
+        $adults = 0;
+        $youth = 0;
+        foreach ($subscribers as $sub)
+        {
+            if ($sub->age == 'adult')
+            {
+                $adults = $adults + 1;
+            }
+            else
+            {
+                $youth = $youth + 1;
+            }
+        }
+
+        return array($adults, $youth);
     }
 
     // Writes data from form to database
-    function writeToDB($name, $age)
+    function writeToDB()
     {
+        global $wpdb;
+        $table_name = $wpdb->prefix . "registration";
+
         if ( isset($_POST['cf-submitted']))
         {
             $name = sanitize_text_field($_POST["cf-name"]);
             $age = sanitize_text_field($_POST["cf-age"]);
 
-            //TODO: Write to DB
+            //Write to DB
+            $wpdb->insert(
+                $table_name,
+                array(
+                    'name' => $name,
+                    'age'  => $age
+                ), 
+                array( 
+                    '%s',
+                    '%s'
+                ) 
+                );
         }
 
     }
@@ -105,6 +138,10 @@ class Registrator
 
     function html_form()
     {   
+        $subscribers = $this->getSubscribers();
+        $free_places_adult = 16 - $subscribers[0];
+        $free_places_youth = 16 - $subscribers[1];
+        
         $timestamp = time();
         $datum = date("d.m.Y", $timestamp);
         echo '<h2>Anmeldung für das Training am ' . $datum . '</h2>';
@@ -113,26 +150,67 @@ class Registrator
         echo '<br>';
         echo 'Freie Plätze Jugendliche: ' . $free_places_youth;
         echo '</p>';
-        echo '<form action="' . esc_url( $_SERVER['REQUEST_URI'] ) . '" method="post">';
-        echo '<label>';
-        echo '<input type="text" name="cf-name" placeholder="Name" pattern="[a-zA-Z ]+" value="' . ( isset( $_POST["cf_name"] ) ? esc_attr( $_POST["cf_name"] ) : '' ) . '"/>';
-        echo '</label>';
-        echo '<label>';
-        // echo '<select name="cf-age" value="' . ( isset( $_POST["cf_age"] ) ? esc_attr( $_POST["cf_age"] ) : '' ) . '">';
-        echo '<select name="cf-age">';
-        echo '<option value="youth">Jugendliche</option>';
-        echo '<option value="adult" selected="selected">Erwachsene</option>';
-        echo '</select>';
-        echo '</label>';
-        echo '<label>';
-        echo '<input type="submit" name="cf-submitted" value="Absenden" />';
-        echo '</label>';
-        echo '</form>';
+        if ($free_places_adult != "0" && $free_places_youth != "0")
+        // if(FALSE)
+        {
+            echo '<form action="' . esc_url( $_SERVER['REQUEST_URI'] ) . '" method="post">';
+            echo '<label>';
+            echo '<input type="text" name="cf-name" placeholder="Name" pattern="[a-zA-Z ]+" value="' . ( isset( $_POST["cf_name"] ) ? esc_attr( $_POST["cf_name"] ) : '' ) . '"/>';
+            echo '</label>';
+            echo '<label>';
+            echo '<select name="cf-age">';
+            echo '<option value="youth">Jugendliche</option>';
+            echo '<option value="adult" selected="selected">Erwachsene</option>';
+            echo '</select>';
+            echo '</label>';
+            echo '<label>';
+            echo '<input type="submit" name="cf-submitted" value="Absenden" />';
+            echo '</label>';
+            echo '</form>';
+        }
+        elseif ($free_places_youth != "0")
+        // elseif(FALSE)
+        {
+            echo '<form action="' . esc_url( $_SERVER['REQUEST_URI'] ) . '" method="post">';
+            echo '<label>';
+            echo '<input type="text" name="cf-name" placeholder="Name" pattern="[a-zA-Z ]+" value="' . ( isset( $_POST["cf_name"] ) ? esc_attr( $_POST["cf_name"] ) : '' ) . '"/>';
+            echo '</label>';
+            echo '<label>';
+            echo '<select name="cf-age">';
+            echo '<option value="adult" selected="selected">Erwachsene</option>';
+            echo '</select>';
+            echo '</label>';
+            echo '<label>';
+            echo '<input type="submit" name="cf-submitted" value="Absenden" />';
+            echo '</label>';
+            echo '</form>';
+        }
+        elseif ($free_places_adult != "0")
+        // elseif(FALSE)
+        {
+            echo '<form action="' . esc_url( $_SERVER['REQUEST_URI'] ) . '" method="post">';
+            echo '<label>';
+            echo '<input type="text" name="cf-name" placeholder="Name" pattern="[a-zA-Z ]+" value="' . ( isset( $_POST["cf_name"] ) ? esc_attr( $_POST["cf_name"] ) : '' ) . '"/>';
+            echo '</label>';
+            echo '<label>';
+            echo '<select name="cf-age">';
+            echo '<option value="youth" selected="selected">Jugendliche</option>';
+            echo '</select>';
+            echo '</label>';
+            echo '<label>';
+            echo '<input type="submit" name="cf-submitted" value="Absenden" />';
+            echo '</label>';
+            echo '</form>';
+        }
+        else
+        {
+            echo '<p>Leider sind für das Training keine Plätze mehr verfügbar.';
+        }
     }
 
     function shortcode()
     {
-        // $this->writeToDB();
+        $this->writeToDB();
         $this->html_form();
     }
 }
