@@ -7,6 +7,7 @@ Author: Malte Becker
 */
 defined( 'ABSPATH' ) or die( 'No script kiddies please!' );
 
+// Function is called on activating the plugin.
 function createTable()
 {
     global $wpdb;
@@ -30,37 +31,26 @@ function createTable()
         dbDelta( $sql );
     }
 }
-
 register_activation_hook( __FILE__, 'createTable' );
 
-$start_registrator = new Registrator();
-
-class Registrator
+// Returns number of subscribers of current day with given age
+function getSubscribers($age)
 {
-    public function __construct()
-    {
 
-    }
+}
 
-    // Returns number of subscribers of current day with given age
-    public function getSubscribers($age)
-    {
+// Writes data from form to database
+function writeToDB($name, $age)
+{
 
-    }
+}
 
-    // Writes data from form to database
-    public function writeToDB($name, $age)
-    {
-
-    }
-
-    // Removes all entries from database
-    public function cleanDB()
-    {
-        // global $wpdb;
-        // $table_name = $wpdb->prefix . "registration";
-        // $delete = $wpdb->query("TRUNCATE TABLE $table_name");
-    }
+// Removes all entries from database
+function cleanDB()
+{
+    // global $wpdb;
+    // $table_name = $wpdb->prefix . "registration";
+    // $delete = $wpdb->query("TRUNCATE TABLE $table_name");
 }
 
 ?>
