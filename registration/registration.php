@@ -37,6 +37,8 @@ class Registrator
     }
 
     // Private
+
+    // Creates table on plugin activation
     function createTable()
     {
         global $wpdb;
@@ -61,7 +63,7 @@ class Registrator
         }
     }
 
-
+    //Deletes table on plugin deactivation
     function deleteTable()
     {
         global $wpdb;
