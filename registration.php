@@ -76,7 +76,7 @@ class Registrator
     }
 
 
-    // Returns number of subscribers of current day with given age
+    // Returns number of subscribers of current day
     function getSubscribers()
     {
         global $wpdb;
@@ -138,6 +138,7 @@ class Registrator
 
     function html_form()
     {   
+        //Check for free space
         $subscribers = $this->getSubscribers();
         $free_places_adult = 16 - $subscribers[0];
         $free_places_youth = 16 - $subscribers[1];
@@ -150,8 +151,9 @@ class Registrator
         echo '<br>';
         echo 'Freie Plätze Jugendliche: ' . $free_places_youth;
         echo '</p>';
+
+        // Free space everywhere
         if ($free_places_adult != "0" && $free_places_youth != "0")
-        // if(FALSE)
         {
             echo '<form action="' . esc_url( $_SERVER['REQUEST_URI'] ) . '" method="post">';
             echo '<label>';
@@ -168,8 +170,8 @@ class Registrator
             echo '</label>';
             echo '</form>';
         }
+        //Free space adults
         elseif ($free_places_youth != "0")
-        // elseif(FALSE)
         {
             echo '<form action="' . esc_url( $_SERVER['REQUEST_URI'] ) . '" method="post">';
             echo '<label>';
@@ -185,8 +187,8 @@ class Registrator
             echo '</label>';
             echo '</form>';
         }
+        //Free space youth
         elseif ($free_places_adult != "0")
-        // elseif(FALSE)
         {
             echo '<form action="' . esc_url( $_SERVER['REQUEST_URI'] ) . '" method="post">';
             echo '<label>';
@@ -202,9 +204,10 @@ class Registrator
             echo '</label>';
             echo '</form>';
         }
+        //No free space
         else
         {
-            echo '<p>Leider sind für das Training keine Plätze mehr verfügbar.';
+            echo '<p>Leider sind für das Training keine Plätze mehr verfügbar.</p>';
         }
     }
 
