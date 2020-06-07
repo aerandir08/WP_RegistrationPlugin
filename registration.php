@@ -55,6 +55,7 @@ class Registrator
             $sql = "CREATE TABLE $table_name (
                 id mediumint(9) NOT NULL AUTO_INCREMENT,
                 name tinytext NOT NULL,
+                familyname tinytext NOT NULL,
                 age tinytext NOT NULL,
                 PRIMARY KEY  (id)
             ) $charset_collate;";
@@ -109,21 +110,30 @@ class Registrator
 
         if ( isset($_POST['cf-submitted']))
         {
-            $name = sanitize_text_field($_POST["cf-name"]);
-            $age = sanitize_text_field($_POST["cf-age"]);
+            $name = strtolower(sanitize_text_field($_POST["cf-name"]));
+            $familyname = strtolower(sanitize_text_field($_POST["cf-familyname"]));
+            $age = strtolower(sanitize_text_field($_POST["cf-age"]));
 
-            //Write to DB
-            $wpdb->insert(
-                $table_name,
-                array(
-                    'name' => $name,
-                    'age'  => $age
-                ), 
-                array( 
-                    '%s',
-                    '%s'
-                ) 
-                );
+            $msg = $this->formValidation($name, $familyname);
+
+            if ($msg[0])
+            {
+                //Write to DB
+                $wpdb->insert(
+                    $table_name,
+                    array(
+                        'name' => $name,
+                        'familyname' => $familyname,
+                        'age' => $age
+                    ), 
+                    array( 
+                        '%s',
+                        '%s',
+                        '%s'
+                    ) 
+                    );
+            }
+            echo $msg[1];
         }
 
     }
@@ -157,7 +167,8 @@ class Registrator
         {
             echo '<form action="' . esc_url( $_SERVER['REQUEST_URI'] ) . '" method="post">';
             echo '<label>';
-            echo '<input type="text" name="cf-name" placeholder="Name" pattern="[a-zA-Z ]+" value="' . ( isset( $_POST["cf_name"] ) ? esc_attr( $_POST["cf_name"] ) : '' ) . '"/>';
+            echo '<input type="text" name="cf-name" placeholder="Vorname" pattern="[a-zA-Z ]+" value="' . ( isset( $_POST["cf_name"] ) ? esc_attr( $_POST["cf_name"] ) : '' ) . '"/>';
+            echo '<input type="text" name="cf-familyname" placeholder="Nachname" pattern="[a-zA-Z ]+" value="' . ( isset( $_POST["cf_name"] ) ? esc_attr( $_POST["cf_name"] ) : '' ) . '"/>';
             echo '</label>';
             echo '<label>';
             echo '<select name="cf-age">';
@@ -166,7 +177,7 @@ class Registrator
             echo '</select>';
             echo '</label>';
             echo '<label>';
-            echo '<input type="submit" name="cf-submitted" value="Absenden" />';
+            echo '<input type="submit" name="cf-submitted" value="Anmelden" />';
             echo '</label>';
             echo '</form>';
         }
@@ -176,6 +187,7 @@ class Registrator
             echo '<form action="' . esc_url( $_SERVER['REQUEST_URI'] ) . '" method="post">';
             echo '<label>';
             echo '<input type="text" name="cf-name" placeholder="Name" pattern="[a-zA-Z ]+" value="' . ( isset( $_POST["cf_name"] ) ? esc_attr( $_POST["cf_name"] ) : '' ) . '"/>';
+            echo '<input type="text" name="cf-familyname" placeholder="Nachname" pattern="[a-zA-Z ]+" value="' . ( isset( $_POST["cf_name"] ) ? esc_attr( $_POST["cf_name"] ) : '' ) . '"/>';
             echo '</label>';
             echo '<label>';
             echo '<select name="cf-age">';
@@ -193,6 +205,7 @@ class Registrator
             echo '<form action="' . esc_url( $_SERVER['REQUEST_URI'] ) . '" method="post">';
             echo '<label>';
             echo '<input type="text" name="cf-name" placeholder="Name" pattern="[a-zA-Z ]+" value="' . ( isset( $_POST["cf_name"] ) ? esc_attr( $_POST["cf_name"] ) : '' ) . '"/>';
+            echo '<input type="text" name="cf-familyname" placeholder="Nachname" pattern="[a-zA-Z ]+" value="' . ( isset( $_POST["cf_name"] ) ? esc_attr( $_POST["cf_name"] ) : '' ) . '"/>';
             echo '</label>';
             echo '<label>';
             echo '<select name="cf-age">';
@@ -211,10 +224,38 @@ class Registrator
         }
     }
 
+    function formValidation($name, $familyname)
+    {
+        if ($name == '')
+        {
+            return array(FALSE, "Vorname darf nicht leer sein.");
+        }
+
+        if ($familyname == '')
+        {
+            return array(FALSE, "Nachname darf nicht leer sein.");
+        }
+
+        global $wpdb;
+        $table_name = $wpdb->prefix . "registration";
+
+        $exists = $wpdb->get_var(
+                    $wpdb->prepare("SELECT COUNT(*) FROM $table_name WHERE name = '$name' AND familyname = '$familyname'")
+        );
+        if ($exists)
+        {
+            return array(FALSE, "Du bist bereits angemeldet.");
+        }
+        else
+        {
+            return array(TRUE, "Anmeldung war erfolgreich.");
+        }
+    }
+
     function shortcode()
     {
-        $this->writeToDB();
         $this->html_form();
+        $this->writeToDB();
     }
 }
 
