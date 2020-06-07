@@ -13,17 +13,20 @@ class Registrator
 {
     public function __construct()
     {
-        register_activation_hook( __FILE__, array( $this, 'registratorActivation') );
-        register_deactivation_hook( __FILE__, array( $this, 'registratorDeactivation') );
+        register_activation_hook( __FILE__, array( $this, 'registratorActivation' ) );
+        register_deactivation_hook( __FILE__, array( $this, 'registratorDeactivation' ) );
 
-        add_action( 'cleanTableEvent', array( $this, 'clean_table'));
+        add_action( 'cleanTableEvent', array( $this, 'clean_table' ));
+
+        add_shortcode( 'registration_form', array( $this, 'shortcode' ));
     }
 
     // Public
     public function registratorActivation()
     {
         $this->createTable();
-        if (! wp_next_scheduled ( 'cleanTableEvent' )) {
+        if (! wp_next_scheduled ( 'cleanTableEvent' ))
+        {
 			wp_schedule_event( strtotime('00:00:00'), 'daily', 'cleanTableEvent' );
 		}
     }
@@ -31,7 +34,8 @@ class Registrator
     public function registratorDeactivation()
     {
         $this->deleteTable();
-        if ( wp_next_scheduled( 'cleanTableEvent' ) ) {
+        if ( wp_next_scheduled( 'cleanTableEvent' ) )
+        {
 			wp_clear_scheduled_hook( 'cleanTableEvent' );
 		}
     }
@@ -81,6 +85,13 @@ class Registrator
     // Writes data from form to database
     function writeToDB($name, $age)
     {
+        if ( isset($_POST['cf-submitted']))
+        {
+            $name = sanitize_text_field($_POST["cf-name"]);
+            $age = sanitize_text_field($_POST["cf-age"]);
+
+            //TODO: Write to DB
+        }
 
     }
 
@@ -90,6 +101,39 @@ class Registrator
         global $wpdb;
         $table_name = $wpdb->prefix . "registration";
         $delete = $wpdb->query("TRUNCATE TABLE $table_name");
+    }
+
+    function html_form()
+    {   
+        $timestamp = time();
+        $datum = date("d.m.Y", $timestamp);
+        echo '<h2>Anmeldung für das Training am ' . $datum . '</h2>';
+        echo '<p>';
+        echo 'Freie Plätze Erwachsene: ' . $free_places_adult;
+        echo '<br>';
+        echo 'Freie Plätze Jugendliche: ' . $free_places_youth;
+        echo '</p>';
+        echo '<form action="' . esc_url( $_SERVER['REQUEST_URI'] ) . '" method="post">';
+        echo '<label>';
+        echo '<input type="text" name="cf-name" placeholder="Name" pattern="[a-zA-Z ]+" value="' . ( isset( $_POST["cf_name"] ) ? esc_attr( $_POST["cf_name"] ) : '' ) . '"/>';
+        echo '</label>';
+        echo '<label>';
+        // echo '<select name="cf-age" value="' . ( isset( $_POST["cf_age"] ) ? esc_attr( $_POST["cf_age"] ) : '' ) . '">';
+        echo '<select name="cf-age">';
+        echo '<option value="youth">Jugendliche</option>';
+        echo '<option value="adult" selected="selected">Erwachsene</option>';
+        echo '</select>';
+        echo '</label>';
+        echo '<label>';
+        echo '<input type="submit" name="cf-submitted" value="Absenden" />';
+        echo '</label>';
+        echo '</form>';
+    }
+
+    function shortcode()
+    {
+        // $this->writeToDB();
+        $this->html_form();
     }
 }
 
