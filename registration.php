@@ -13,40 +13,78 @@ class Registrator
 {
     public function __construct()
     {
-        register_activation_hook( __FILE__, array( $this, 'registratorActivation' ) );
-        register_deactivation_hook( __FILE__, array( $this, 'registratorDeactivation' ) );
+        register_activation_hook( __FILE__, array( $this, 'installPlugin' ) );
+        register_deactivation_hook( __FILE__, array( $this, 'uninstallPlugin' ) );
 
-        add_action( 'cleanTableEvent', array( $this, 'clean_table' ));
+        add_action('admin_menu', array($this, 'addBackend'));
 
         add_shortcode( 'registration_form', array( $this, 'shortcode' ));
     }
 
     // Public
-    public function registratorActivation()
+    public function installPlugin()
     {
-        $this->createTable();
-        if (! wp_next_scheduled ( 'cleanTableEvent' ))
-        {
-			wp_schedule_event( strtotime('00:00:00'), 'daily', 'cleanTableEvent' );
-		}
+        $this->createTable_users();
+        $this->createTable_dates();
     }
 
-    public function registratorDeactivation()
+    public function uninstallPlugin()
     {
-        $this->deleteTable();
-        if ( wp_next_scheduled( 'cleanTableEvent' ) )
-        {
-			wp_clear_scheduled_hook( 'cleanTableEvent' );
-		}
+        $this->deleteTables();
     }
 
     // Private
 
+    function addBackend()
+    {
+        add_action('add_date', array($this, 'addDate'));
+        add_menu_page('Registrator', 'Registrator', 'manage_options', 'registrator', array($this, 'backend'));
+    }
+
+    function backend()
+    {
+        if (!current_user_can('manage_options'))
+        {
+            wp_die( __('You do not have sufficient pilchards to access this page.'));
+        }
+
+        echo '<h1>Registrator Backend</h1>';
+        echo '<form method="post">';
+        wp_nonce_field('button_clicked', 'button_clicked_nonce', true, true);
+        echo '<label>';
+        echo '<input type="text" name="cf-date" placeholder="Date" pattern="(0[1-9]|[1-2][0-9]|3[0-1]).(0[1-9]|1[0-2]).[0-9]{4}"/>';
+        echo '</label>';
+        submit_button('Add Date');
+        echo '</form>';
+    }
+
+    function addDate()
+    {
+        if ( isset($_POST[button_clicked_nonce]) && wp_verify_nonce($_POST[button_clicked_nonce], 'button_clicked'))
+        {
+            global $wpdb;
+            $table_name = $wpdb->prefix . "registration_date";
+
+            $date = $_POST["cf-date"];
+
+            //Write to DB
+            $wpdb->insert(
+                $table_name,
+                array(
+                    'date' => $date
+                ), 
+                array( 
+                    '%s'
+                ) 
+            );
+        }
+    }
+
     // Creates table on plugin activation
-    function createTable()
+    function createTable_users()
     {
         global $wpdb;
-        $table_name = $wpdb->prefix . "registration";
+        $table_name = $wpdb->prefix . "registration_users";
 
         $charset_collate = $wpdb->get_charset_collate();
 
@@ -68,11 +106,36 @@ class Registrator
         }
     }
 
-    //Deletes table on plugin deactivation
-    function deleteTable()
+    function createTable_dates()
     {
         global $wpdb;
-        $table_name = $wpdb->prefix . "registration";
+        $table_name = $wpdb->prefix . "registration_dates";
+
+        $charset_collate = $wpdb->get_charset_collate();
+
+        if ($wpdb->get_var("SHOW TABLES LIKE '". $table_name ."'"  ) != $table_name ) 
+        {
+            $sql = "CREATE TABLE $table_name (
+                id mediumint(9) NOT NULL AUTO_INCREMENT,
+                date tinytext NOT NULL,
+                PRIMARY KEY  (id)
+            ) $charset_collate;";
+
+            if(!function_exists('dbDelta'))
+            {
+                require_once(ABSPATH . 'wp-admin/includes/upgrade.php');
+            }
+            dbDelta( $sql );
+        }
+    }
+
+    //Deletes table on plugin deactivation
+    function deleteTables()
+    {
+        global $wpdb;
+        $table_name = $wpdb->prefix . "registration_users";
+        $wpdb->query( "DROP TABLE IF EXISTS $table_name" );
+        $table_name = $wpdb->prefix . "registration_dates";
         $wpdb->query( "DROP TABLE IF EXISTS $table_name" );
     }
 
@@ -81,7 +144,7 @@ class Registrator
     function getSubscribers()
     {
         global $wpdb;
-        $table_name = $wpdb->prefix . "registration";
+        $table_name = $wpdb->prefix . "registration_users";
 
         $subscribers = $wpdb->get_results('SELECT * FROM ' . $table_name);
 
@@ -106,7 +169,7 @@ class Registrator
     function writeToDB()
     {
         global $wpdb;
-        $table_name = $wpdb->prefix . "registration";
+        $table_name = $wpdb->prefix . "registration_users";
 
         if ( isset($_POST['cf-submitted']))
         {
@@ -142,7 +205,7 @@ class Registrator
     function cleanTable()
     {
         global $wpdb;
-        $table_name = $wpdb->prefix . "registration";
+        $table_name = $wpdb->prefix . "registration_users";
         $delete = $wpdb->query("TRUNCATE TABLE $table_name");
     }
 
@@ -237,7 +300,7 @@ class Registrator
         }
 
         global $wpdb;
-        $table_name = $wpdb->prefix . "registration";
+        $table_name = $wpdb->prefix . "registration_users";
 
         $exists = $wpdb->get_var(
                     $wpdb->prepare("SELECT COUNT(*) FROM $table_name WHERE name = '$name' AND familyname = '$familyname'")
