@@ -1,15 +1,15 @@
 <?php
 /*
-Plugin Name: Simple Registration
-Description: Wordpress Plugin to do a simple daily registration
-Version: 1.0
+Plugin Name: Simple Registration Dev
+Description: Wordpress Plugin to do a simple daily registration Development-Version
+Version: 2.0
 Author: Malte Becker
 */
 defined( 'ABSPATH' ) or die( 'No script kiddies please!' );
 
-$start_registator = new Registrator();
+$start_registator = new Registrator_dev();
 
-class Registrator
+class Registrator_dev
 {
     public function __construct()
     {
@@ -18,7 +18,7 @@ class Registrator
 
         add_action('admin_menu', array($this, 'addBackend'));
 
-        add_shortcode( 'registration_form', array( $this, 'shortcode' ));
+        add_shortcode( 'registration_form_dev', array( $this, 'shortcode' ));
     }
 
     // Public
@@ -43,27 +43,53 @@ class Registrator
 
     function backend()
     {
+       
         if (!current_user_can('manage_options'))
         {
             wp_die( __('You do not have sufficient pilchards to access this page.'));
         }
 
+        if (isset($_POST['submit_add_date']) && check_admin_referer('add_date_clicked')) {
+            $this->addDate();
+        }
+        if (isset($_POST['submit_remove_date']) && check_admin_referer('remove_date_clicked')) {
+            $this->removeDate();
+        }
+
         echo '<h1>Registrator Backend</h1>';
-        echo '<form method="post">';
-        wp_nonce_field('button_clicked', 'button_clicked_nonce', true, true);
+        echo '<form action="options-general.php?page=registrator" method="post">';
+        wp_nonce_field('add_date_clicked');
         echo '<label>';
         echo '<input type="text" name="cf-date" placeholder="Date" pattern="(0[1-9]|[1-2][0-9]|3[0-1]).(0[1-9]|1[0-2]).[0-9]{4}"/>';
         echo '</label>';
-        submit_button('Add Date');
+        echo '<input type="hidden" value="true" name="submit_add_date" />';
+        submit_button('Datum hinzufügen');
         echo '</form>';
+
+        $dates = $this->getDates();
+        echo '<form action="options-general.php?page=registrator" method="post">';
+        wp_nonce_field('remove_date_clicked');
+        echo '<label>';
+        echo '<select id="dates name="cf-remove-date">';
+        foreach ($dates as $id => $date)
+        {
+            echo '<option value="' . $id . '">' . $date . '</option>';
+        }
+        echo '</label>';
+        echo '<input type="hidden" value="true" name="submit_remove_date" />';
+        submit_button('Datum entfernen');
+        echo '</form>';
+
+        
     }
 
     function addDate()
     {
-        if ( isset($_POST[button_clicked_nonce]) && wp_verify_nonce($_POST[button_clicked_nonce], 'button_clicked'))
+        global $wpdb;
+
+        if (isset($_POST['submit_add_date']))
         {
-            global $wpdb;
-            $table_name = $wpdb->prefix . "registration_date";
+            $table_name = $wpdb->prefix . "registration_dates";
 
             $date = $_POST["cf-date"];
 
@@ -71,13 +97,46 @@ class Registrator
             $wpdb->insert(
                 $table_name,
                 array(
-                    'date' => $date
+                    'datum' => $date
                 ), 
                 array( 
                     '%s'
                 ) 
             );
+
+            echo '<p>Datum wurde hinzugefügt</p>';
         }
+    }
+
+    function removeDate()
+    {
+        global $wpdb;
+        if (isset($_POST['submit_remove_date']))
+        {
+            $table_name = $wpdb->prefix . "registration_dates";
+            $id = $_POST["cf-remove-date"];
+
+            echo $id;
+            $wpdb->delete($table_name, array('id' => $id));
+
+            echo '<p>Datum wurde entfernt.</p>';
+        }
+    }
+
+    function getDates()
+    {
+        global $wpdb;
+
+        $table_name = $wpdb->prefix . "registration_dates";
+
+        $entries = $wpdb->get_results('SELECT * FROM ' . $table_name);
+
+        foreach ($entries as $entry)
+        {
+            $dates[$entry->id] = $entry->datum;
+        }
+
+        return $dates;
     }
 
     // Creates table on plugin activation
@@ -117,7 +176,7 @@ class Registrator
         {
             $sql = "CREATE TABLE $table_name (
                 id mediumint(9) NOT NULL AUTO_INCREMENT,
-                date tinytext NOT NULL,
+                datum tinytext NOT NULL,
                 PRIMARY KEY  (id)
             ) $charset_collate;";
 
