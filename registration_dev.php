@@ -70,7 +70,7 @@ class Registrator_dev
         echo '<form action="options-general.php?page=registrator" method="post">';
         wp_nonce_field('remove_date_clicked');
         echo '<label>';
-        echo '<select id="dates name="cf-remove-date">';
+        echo '<select id="dates" name="cf-remove-date">';
         foreach ($dates as $id => $date)
         {
             echo '<option value="' . $id . '">' . $date . '</option>';
@@ -116,7 +116,6 @@ class Registrator_dev
             $table_name = $wpdb->prefix . "registration_dates";
             $id = $_POST["cf-remove-date"];
 
-            echo $id;
             $wpdb->delete($table_name, array('id' => $id));
 
             echo '<p>Datum wurde entfernt.</p>';
