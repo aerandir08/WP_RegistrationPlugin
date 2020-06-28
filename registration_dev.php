@@ -75,6 +75,7 @@ class Registrator_dev
         {
             echo '<option value="' . $id . '">' . $date . '</option>';
         }
+        echo '</select>';
         echo '</label>';
         echo '<input type="hidden" value="true" name="submit_remove_date" />';
         submit_button('Datum entfernen');
@@ -153,6 +154,7 @@ class Registrator_dev
                 name tinytext NOT NULL,
                 familyname tinytext NOT NULL,
                 age tinytext NOT NULL,
+                datum tinytext NOT NULL,
                 PRIMARY KEY  (id)
             ) $charset_collate;";
 
@@ -199,12 +201,12 @@ class Registrator_dev
 
 
     // Returns number of subscribers of current day
-    function getSubscribers()
+    function getSubscribers($date)
     {
         global $wpdb;
         $table_name = $wpdb->prefix . "registration_users";
-
-        $subscribers = $wpdb->get_results('SELECT * FROM ' . $table_name);
+        $query = 'SELECT * FROM ' . $table_name . ' WHERE datum = \'' . $date . '\'';
+        $subscribers = $wpdb->get_results($query);
 
         $adults = 0;
         $youth = 0;
@@ -219,7 +221,6 @@ class Registrator_dev
                 $youth = $youth + 1;
             }
         }
-
         return array($adults, $youth);
     }
 
@@ -233,9 +234,11 @@ class Registrator_dev
         {
             $name = strtolower(sanitize_text_field($_POST["cf-name"]));
             $familyname = strtolower(sanitize_text_field($_POST["cf-familyname"]));
-            $age = strtolower(sanitize_text_field($_POST["cf-age"]));
+            // $age = strtolower(sanitize_text_field($_POST["cf-age"]));
+            $age = "adult";
+            $date = $_POST["cf-date"];
 
-            $msg = $this->formValidation($name, $familyname);
+            $msg = $this->formValidation($name, $familyname, $date);
 
             if ($msg[0])
             {
@@ -245,16 +248,18 @@ class Registrator_dev
                     array(
                         'name' => $name,
                         'familyname' => $familyname,
-                        'age' => $age
+                        'age' => $age,
+                        'datum' => $date
                     ), 
                     array( 
+                        '%s',
                         '%s',
                         '%s',
                         '%s'
                     ) 
                     );
             }
-            echo $msg[1];
+            echo '<p><b>' . $msg[1] . '</b></p>';
         }
 
     }
@@ -269,83 +274,50 @@ class Registrator_dev
 
     function html_form()
     {   
-        //Check for free space
-        $subscribers = $this->getSubscribers();
-        $free_places_adult = 16 - $subscribers[0];
-        $free_places_youth = 16 - $subscribers[1];
-        
-        $timestamp = time();
-        $datum = date("d.m.Y", $timestamp);
-        echo '<h2>Anmeldung für das Training am ' . $datum . '</h2>';
-        echo '<p>';
-        echo 'Freie Plätze Erwachsene: ' . $free_places_adult;
-        echo '<br>';
-        echo 'Freie Plätze Jugendliche: ' . $free_places_youth;
-        echo '</p>';
+        $dates = $this->getDates();
+        echo '<p>19.30 Uhr - Niesenteichhalle</br>An den Lothewiesen 6, 33100 Paderborn</p>';
+        echo '<p><ul>';
+        foreach ($dates as $date)
+        {
+            $subscribers = $this->getSubscribers($date);
+            $free = 16 - $subscribers[0];
+            echo '<li>' . $date . ' (' .$free . ' freie Plätze)</li>';
+            if ($free > 0)
+            {
+                $freeDates[] = $date;
+            }
+        }
+        echo '</ul></p>';
 
-        // Free space everywhere
-        if ($free_places_adult != "0" && $free_places_youth != "0")
+    
+        echo '<form action="' . esc_url( $_SERVER['REQUEST_URI'] ) . '" method="post">';
+        echo '<label>';
+        echo '<select id="dates" name="cf-date">';
+        foreach ($freeDates as $date)
         {
-            echo '<form action="' . esc_url( $_SERVER['REQUEST_URI'] ) . '" method="post">';
-            echo '<label>';
-            echo '<input type="text" name="cf-name" placeholder="Vorname" pattern="[a-zA-Z ]+" value="' . ( isset( $_POST["cf_name"] ) ? esc_attr( $_POST["cf_name"] ) : '' ) . '"/>';
-            echo '<input type="text" name="cf-familyname" placeholder="Nachname" pattern="[a-zA-Z ]+" value="' . ( isset( $_POST["cf_name"] ) ? esc_attr( $_POST["cf_name"] ) : '' ) . '"/>';
-            echo '</label>';
-            echo '<label>';
-            echo '<select name="cf-age">';
-            echo '<option value="youth">Jugendliche</option>';
-            echo '<option value="adult" selected="selected">Erwachsene</option>';
-            echo '</select>';
-            echo '</label>';
-            echo '<label>';
-            echo '<input type="submit" name="cf-submitted" value="Anmelden" />';
-            echo '</label>';
-            echo '</form>';
+            echo '<option value="' . $date . '">' . $date . '</option>';
         }
-        //Free space adults
-        elseif ($free_places_youth != "0")
-        {
-            echo '<form action="' . esc_url( $_SERVER['REQUEST_URI'] ) . '" method="post">';
-            echo '<label>';
-            echo '<input type="text" name="cf-name" placeholder="Name" pattern="[a-zA-Z ]+" value="' . ( isset( $_POST["cf_name"] ) ? esc_attr( $_POST["cf_name"] ) : '' ) . '"/>';
-            echo '<input type="text" name="cf-familyname" placeholder="Nachname" pattern="[a-zA-Z ]+" value="' . ( isset( $_POST["cf_name"] ) ? esc_attr( $_POST["cf_name"] ) : '' ) . '"/>';
-            echo '</label>';
-            echo '<label>';
-            echo '<select name="cf-age">';
-            echo '<option value="adult" selected="selected">Erwachsene</option>';
-            echo '</select>';
-            echo '</label>';
-            echo '<label>';
-            echo '<input type="submit" name="cf-submitted" value="Absenden" />';
-            echo '</label>';
-            echo '</form>';
-        }
-        //Free space youth
-        elseif ($free_places_adult != "0")
-        {
-            echo '<form action="' . esc_url( $_SERVER['REQUEST_URI'] ) . '" method="post">';
-            echo '<label>';
-            echo '<input type="text" name="cf-name" placeholder="Name" pattern="[a-zA-Z ]+" value="' . ( isset( $_POST["cf_name"] ) ? esc_attr( $_POST["cf_name"] ) : '' ) . '"/>';
-            echo '<input type="text" name="cf-familyname" placeholder="Nachname" pattern="[a-zA-Z ]+" value="' . ( isset( $_POST["cf_name"] ) ? esc_attr( $_POST["cf_name"] ) : '' ) . '"/>';
-            echo '</label>';
-            echo '<label>';
-            echo '<select name="cf-age">';
-            echo '<option value="youth" selected="selected">Jugendliche</option>';
-            echo '</select>';
-            echo '</label>';
-            echo '<label>';
-            echo '<input type="submit" name="cf-submitted" value="Absenden" />';
-            echo '</label>';
-            echo '</form>';
-        }
-        //No free space
-        else
-        {
-            echo '<p>Leider sind für das Training keine Plätze mehr verfügbar.</p>';
-        }
+        echo '</select>';
+        echo '</label>';
+        echo '<label>';
+        echo '<input type="text" name="cf-name" placeholder="Name" pattern="[a-zA-Z ]+" value="' . ( isset( $_POST["cf_name"] ) ? esc_attr( $_POST["cf_name"] ) : '' ) . '"/>';
+        echo '<input type="text" name="cf-familyname" placeholder="Nachname" pattern="[a-zA-Z ]+" value="' . ( isset( $_POST["cf_name"] ) ? esc_attr( $_POST["cf_name"] ) : '' ) . '"/>';
+        echo '</label>';
+        echo '<label>';
+        echo '<input type="checkbox" name="cf-terms" required> Ich akzeptiere die <a href="https://badminton-paderborn.de/wp-content/uploads/2020/06/TV_1875_PB_-_Datenschutzerklärung_-_Mitglieder.pdf" target="_blank">Datenschutzerklärung</a> sowie das <a href="https://badminton-paderborn.de/wp-content/uploads/2020/06/Corona_Maßnahmen_Badminton2.0.pdf" target="_blank">Hygienekonzept</a>.';
+        echo '</label>';
+        echo '<label>';
+        echo '<input type="submit" name="cf-submitted" value="Absenden" />';
+        echo '</label>';
+        echo '</form>';
+
+        echo '</br>';
+        echo 'Falls ihr euch angemeldet hab und doch nicht kommen könnt meldet euch bitte bei Malte ab.</br>';
+        echo 'Handy: 0163-7017691 (Anruf, SMS, Whatsapp, Telegram, ...)</br>';
+        echo 'Mail: malte@badminton-paderborn.de</br></br>';
     }
 
-    function formValidation($name, $familyname)
+    function formValidation($name, $familyname, $date)
     {
         if ($name == '')
         {
@@ -361,7 +333,7 @@ class Registrator_dev
         $table_name = $wpdb->prefix . "registration_users";
 
         $exists = $wpdb->get_var(
-                    $wpdb->prepare("SELECT COUNT(*) FROM $table_name WHERE name = '$name' AND familyname = '$familyname'")
+                    $wpdb->prepare("SELECT COUNT(*) FROM $table_name WHERE name = '$name' AND familyname = '$familyname' AND datum = '$date'")
         );
         if ($exists)
         {
