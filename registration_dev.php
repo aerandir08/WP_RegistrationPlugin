@@ -18,7 +18,7 @@ class Registrator_dev
 
         add_action('admin_menu', array($this, 'addBackend'));
 
-        add_shortcode( 'registration_form_dev', array( $this, 'shortcode' ));
+        add_shortcode( 'registration_form', array( $this, 'shortcode' ));
     }
 
     // Public
@@ -80,8 +80,22 @@ class Registrator_dev
         echo '<input type="hidden" value="true" name="submit_remove_date" />';
         submit_button('Datum entfernen');
         echo '</form>';
-
         
+        echo '<h2>Anmeldungen</h2>';
+        foreach ($dates as $date)
+        {
+            list($names, $famnames) = $this->getNames($date);
+
+            echo '<h5>' . $date . '</h5>';
+            echo '<p>';
+            echo '<ol>';
+            foreach ($names as $id => $name)
+            {
+                echo '<li>' . $name . ' ' . $famnames[$id] . '</li>';
+            }
+            echo '</ol>';
+            echo '</p>';
+        }   
     }
 
     function addDate()
@@ -199,6 +213,28 @@ class Registrator_dev
         $wpdb->query( "DROP TABLE IF EXISTS $table_name" );
     }
 
+    // Returns Names
+    function getNames($date)
+    {
+        global $wpdb;
+        $table_name = $wpdb->prefix . "registration_users";
+        $query = 'SELECT * FROM ' . $table_name . ' WHERE datum = \'' . $date . '\'';
+        $subscribers = $wpdb->get_results($query);
+
+        foreach ($subscribers as $sub)
+        {
+            if ($sub->age == 'adult')
+            {
+                $name[] = $sub->name;
+                $famname[] = $sub->familyname;
+            }
+            else
+            {
+                $youth = $youth + 1;
+            }
+        }
+        return array($name, $famname);
+    }
 
     // Returns number of subscribers of current day
     function getSubscribers($date)
@@ -300,7 +336,7 @@ class Registrator_dev
         echo '</select>';
         echo '</label>';
         echo '<label>';
-        echo '<input type="text" name="cf-name" placeholder="Name" pattern="[a-zA-Z ]+" value="' . ( isset( $_POST["cf_name"] ) ? esc_attr( $_POST["cf_name"] ) : '' ) . '"/>';
+        echo '<input type="text" name="cf-name" placeholder="Vorname" pattern="[a-zA-Z ]+" value="' . ( isset( $_POST["cf_name"] ) ? esc_attr( $_POST["cf_name"] ) : '' ) . '"/>';
         echo '<input type="text" name="cf-familyname" placeholder="Nachname" pattern="[a-zA-Z ]+" value="' . ( isset( $_POST["cf_name"] ) ? esc_attr( $_POST["cf_name"] ) : '' ) . '"/>';
         echo '</label>';
         echo '<label>';
