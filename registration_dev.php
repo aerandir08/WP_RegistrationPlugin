@@ -98,6 +98,22 @@ class Registrator_dev
         }   
     }
 
+    function removeUser()
+    {
+        global $wpdb;
+        if (isset($_POST['submit_remove_user']))
+        {
+            $table_name = $wpdb->prefix . "registration_users";
+            $date = $_POST["user-date"];
+            $name = $_POST["user-name"];
+            $famname = $_POST["user-famname"];
+
+            $wpdb->delete($table_name, array('datum' => $date, 'name' => $name, 'familyname' => $famname));
+
+            echo '<p>Datum wurde entfernt.</p>';
+        }
+    }
+
     function addDate()
     {
         global $wpdb;
