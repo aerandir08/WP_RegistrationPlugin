@@ -60,13 +60,15 @@ class Registrator_dev
         echo '<form action="options-general.php?page=registrator" method="post">';
         wp_nonce_field('add_date_clicked');
         echo '<label>';
-        echo '<input type="text" name="cf-date" placeholder="Date" pattern="(0[1-9]|[1-2][0-9]|3[0-1]).(0[1-9]|1[0-2]).[0-9]{4}"/>';
+        echo '<input type="text" name="cf-date" placeholder="Date"/>';
         echo '</label>';
+        echo '<label><input type="checkbox" name="cf-adult">Adult  </label>';
+        echo '<label><input type="checkbox" name="cf-youth">Youth</label>';
         echo '<input type="hidden" value="true" name="submit_add_date" />';
         submit_button('Datum hinzufügen');
         echo '</form>';
 
-        $dates = $this->getDates();
+        $dates = $this->getDates('all');
         echo '<form action="options-general.php?page=registrator" method="post">';
         wp_nonce_field('remove_date_clicked');
         echo '<label>';
@@ -82,36 +84,26 @@ class Registrator_dev
         echo '</form>';
         
         echo '<h2>Anmeldungen</h2>';
-        foreach ($dates as $date)
+        $ages = ['youth', 'adult'];
+        foreach ($ages as $age)
         {
-            list($names, $famnames) = $this->getNames($date);
-
-            echo '<h5>' . $date . '</h5>';
-            echo '<p>';
-            echo '<ol>';
-            foreach ($names as $id => $name)
+            echo '<h4>' . $age . '</h4>';
+            $dates = $this->getDates($age);
+            foreach ($dates as $date)
             {
-                echo '<li>' . $name . ' ' . $famnames[$id] . '</li>';
+                list($names, $famnames) = $this->getNames($date, $age);
+
+                echo '<h5>' . $date . '</h5>';
+                echo '<p>';
+                echo '<ol>';
+                foreach ($names as $id => $name)
+                {
+                    echo '<li>' . $name . ' ' . $famnames[$id] . '</li>';
+                }
+                echo '</ol>';
+                echo '</p>';
             }
-            echo '</ol>';
-            echo '</p>';
-        }   
-    }
-
-    function removeUser()
-    {
-        global $wpdb;
-        if (isset($_POST['submit_remove_user']))
-        {
-            $table_name = $wpdb->prefix . "registration_users";
-            $date = $_POST["user-date"];
-            $name = $_POST["user-name"];
-            $famname = $_POST["user-famname"];
-
-            $wpdb->delete($table_name, array('datum' => $date, 'name' => $name, 'familyname' => $famname));
-
-            echo '<p>Datum wurde entfernt.</p>';
-        }
+        } 
     }
 
     function addDate()
@@ -123,15 +115,37 @@ class Registrator_dev
             $table_name = $wpdb->prefix . "registration_dates";
 
             $date = $_POST["cf-date"];
+            $adult = $_POST["cf-adult"];
+            if ($adult == 'on')
+            {
+                $adult = TRUE;
+            }
+            else
+            {
+                $adult = FALSE;
+            }
+            $youth = $_POST["cf-youth"];
+            if ($youth == 'on')
+            {
+                $youth = TRUE;
+            }
+            else
+            {
+                $youth = FALSE;
+            }
 
             //Write to DB
             $wpdb->insert(
                 $table_name,
                 array(
-                    'datum' => $date
+                    'datum' => $date,
+                    'adult' => $adult,
+                    'youth' => $youth
                 ), 
                 array( 
-                    '%s'
+                    '%s',
+                    '%d',
+                    '%d'
                 ) 
             );
 
@@ -153,13 +167,24 @@ class Registrator_dev
         }
     }
 
-    function getDates()
+    function getDates($age)
     {
         global $wpdb;
 
         $table_name = $wpdb->prefix . "registration_dates";
-
-        $entries = $wpdb->get_results('SELECT * FROM ' . $table_name);
+        if ($age == 'youth')
+        {
+            $query = 'SELECT * FROM ' . $table_name . ' WHERE youth = 1';
+        }
+        elseif ($age == 'all')
+        {
+            $query = 'SELECT * FROM ' . $table_name;
+        }
+        else
+        {
+            $query = 'SELECT * FROM ' . $table_name . ' WHERE adult = 1';
+        }
+        $entries = $wpdb->get_results($query);
 
         foreach ($entries as $entry)
         {
@@ -208,6 +233,8 @@ class Registrator_dev
             $sql = "CREATE TABLE $table_name (
                 id mediumint(9) NOT NULL AUTO_INCREMENT,
                 datum tinytext NOT NULL,
+                adult boolean,
+                youth boolean,
                 PRIMARY KEY  (id)
             ) $charset_collate;";
 
@@ -230,50 +257,31 @@ class Registrator_dev
     }
 
     // Returns Names
-    function getNames($date)
+    function getNames($date, $age)
     {
         global $wpdb;
         $table_name = $wpdb->prefix . "registration_users";
-        $query = 'SELECT * FROM ' . $table_name . ' WHERE datum = \'' . $date . '\'';
+        $query = "SELECT * FROM $table_name WHERE datum = '$date' AND age = '$age'";
         $subscribers = $wpdb->get_results($query);
 
         foreach ($subscribers as $sub)
         {
-            if ($sub->age == 'adult')
-            {
-                $name[] = $sub->name;
-                $famname[] = $sub->familyname;
-            }
-            else
-            {
-                $youth = $youth + 1;
-            }
+            $name[] = $sub->name;
+            $famname[] = $sub->familyname;
         }
         return array($name, $famname);
     }
 
     // Returns number of subscribers of current day
-    function getSubscribers($date)
+    function getSubscribers($date, $age)
     {
         global $wpdb;
         $table_name = $wpdb->prefix . "registration_users";
-        $query = 'SELECT * FROM ' . $table_name . ' WHERE datum = \'' . $date . '\'';
+        $query = "SELECT * FROM $table_name WHERE datum = '$date' AND age = '$age'";
+
         $subscribers = $wpdb->get_results($query);
 
-        $adults = 0;
-        $youth = 0;
-        foreach ($subscribers as $sub)
-        {
-            if ($sub->age == 'adult')
-            {
-                $adults = $adults + 1;
-            }
-            else
-            {
-                $youth = $youth + 1;
-            }
-        }
-        return array($adults, $youth);
+        return count($subscribers);
     }
 
     // Writes data from form to database
@@ -282,15 +290,15 @@ class Registrator_dev
         global $wpdb;
         $table_name = $wpdb->prefix . "registration_users";
 
-        if ( isset($_POST['cf-submitted']))
+        if ( isset($_POST['cf-submitted-youth']))
         {
             $name = strtolower(sanitize_text_field($_POST["cf-name"]));
             $familyname = strtolower(sanitize_text_field($_POST["cf-familyname"]));
             // $age = strtolower(sanitize_text_field($_POST["cf-age"]));
-            $age = "adult";
+            $age = "youth";
             $date = $_POST["cf-date"];
 
-            $msg = $this->formValidation($name, $familyname, $date);
+            $msg = $this->formValidation($name, $familyname, $date, $age);
 
             if ($msg[0])
             {
@@ -311,7 +319,39 @@ class Registrator_dev
                     ) 
                     );
             }
-            echo '<p><b>' . $msg[1] . '</b></p>';
+            echo '<script type="text/javascript">alert("'.$msg[1].'");</script>';
+        }
+
+        if ( isset($_POST['cf-submitted-adult']))
+        {
+            $name = strtolower(sanitize_text_field($_POST["cf-name"]));
+            $familyname = strtolower(sanitize_text_field($_POST["cf-familyname"]));
+            // $age = strtolower(sanitize_text_field($_POST["cf-age"]));
+            $age = "adult";
+            $date = $_POST["cf-date"];
+
+            $msg = $this->formValidation($name, $familyname, $date, $age);
+
+            if ($msg[0])
+            {
+                //Write to DB
+                $wpdb->insert(
+                    $table_name,
+                    array(
+                        'name' => $name,
+                        'familyname' => $familyname,
+                        'age' => $age,
+                        'datum' => $date
+                    ), 
+                    array( 
+                        '%s',
+                        '%s',
+                        '%s',
+                        '%s'
+                    ) 
+                    );
+            }
+            echo '<script type="text/javascript">alert("'.$msg[1].'");</script>';
         }
 
     }
@@ -326,50 +366,72 @@ class Registrator_dev
 
     function html_form()
     {   
-        $dates = $this->getDates();
-        echo '<p>19.30 Uhr - Niesenteichhalle</br>An den Lothewiesen 6, 33100 Paderborn</p>';
-        echo '<p><ul>';
-        foreach ($dates as $date)
-        {
-            $subscribers = $this->getSubscribers($date);
-            $free = 16 - $subscribers[0];
-            echo '<li>' . $date . ' (' .$free . ' freie Plätze)</li>';
-            if ($free > 0)
-            {
-                $freeDates[] = $date;
-            }
-        }
-        echo '</ul></p>';
-
-    
-        echo '<form action="' . esc_url( $_SERVER['REQUEST_URI'] ) . '" method="post">';
-        echo '<label>';
-        echo '<select id="dates" name="cf-date">';
-        foreach ($freeDates as $date)
-        {
-            echo '<option value="' . $date . '">' . $date . '</option>';
-        }
-        echo '</select>';
-        echo '</label>';
-        echo '<label>';
-        echo '<input type="text" name="cf-name" placeholder="Vorname" pattern="[a-zA-Z ]+" value="' . ( isset( $_POST["cf_name"] ) ? esc_attr( $_POST["cf_name"] ) : '' ) . '"/>';
-        echo '<input type="text" name="cf-familyname" placeholder="Nachname" pattern="[a-zA-Z ]+" value="' . ( isset( $_POST["cf_name"] ) ? esc_attr( $_POST["cf_name"] ) : '' ) . '"/>';
-        echo '</label>';
-        echo '<label>';
-        echo '<input type="checkbox" name="cf-terms" required> Ich akzeptiere die <a href="https://badminton-paderborn.de/wp-content/uploads/2020/06/TV_1875_PB_-_Datenschutzerklärung_-_Mitglieder.pdf" target="_blank">Datenschutzerklärung</a> sowie das <a href="https://badminton-paderborn.de/wp-content/uploads/2020/06/Corona_Maßnahmen_Badminton2.0.pdf" target="_blank">Hygienekonzept</a>.';
-        echo '</label>';
-        echo '<label>';
-        echo '<input type="submit" name="cf-submitted" value="Absenden" />';
-        echo '</label>';
-        echo '</form>';
-
-        echo '</br>';
-        echo 'Falls ihr euch angemeldet hab und doch nicht kommen könnt meldet euch bitte bei Malte ab.</br>';
+        echo '<h2>Informationen</h2>';
+        echo '<p>Hier könnt ihr euch für das Training anmelden. Das Training findet zu den gewohnten und unter Trainingszeiten aufgelisteten Zeiten in der Kaukenberghalle statt.<p>';
+        echo '<p>Falls ihr euch angemeldet hab und doch nicht kommen könnt meldet euch bitte bei Malte ab.</br>';
         echo 'Handy: 0163-7017691 (Anruf, SMS, Whatsapp, Telegram, ...)</br>';
-        echo 'Mail: malte@badminton-paderborn.de</br></br>';
+        echo 'Mail: malte@badminton-paderborn.de</p>';
+
+        $ages = ['youth', 'adult'];
+        
+        foreach ($ages as $age)
+        {
+            if ($age == youth)
+            {
+                echo '<h2>Jugendtraining</h2>';
+            }
+            else
+            {
+                echo '<h2>Erwachsenentraining</h2>';
+            }
+            echo '<p><ul>';
+
+            $dates = $this->getDates($age);
+            $freeDates = array();
+            foreach ($dates as $date)
+            {
+                $subscribers = $this->getSubscribers($date, $age);
+                $free = 30 - $subscribers;
+                echo '<li>' . $date . ' (' .$free . ' freie Plätze)</li>';
+                if ($free > 0)
+                {
+                    $freeDates[] = $date;
+                }
+            }
+            echo '</ul></p>';
+
+        
+            echo '<form action="' . esc_url( $_SERVER['REQUEST_URI'] ) . '" method="post">';
+            echo '<label>';
+            echo '<select id="dates" name="cf-date">';
+            foreach ($freeDates as $date)
+            {
+                echo '<option value="' . $date . '">' . $date . '</option>';
+            }
+            echo '</select>';
+            echo '</label>';
+            echo '<label>';
+            echo '<input type="text" name="cf-name" placeholder="Vorname" pattern="[a-zA-Z ]+" value="' . ( isset( $_POST["cf_name"] ) ? esc_attr( $_POST["cf_name"] ) : '' ) . '"/>';
+            echo '<input type="text" name="cf-familyname" placeholder="Nachname" pattern="[a-zA-Z ]+" value="' . ( isset( $_POST["cf_name"] ) ? esc_attr( $_POST["cf_name"] ) : '' ) . '"/>';
+            echo '</label>';
+            echo '<label>';
+            echo '<input type="checkbox" name="cf-terms" required> Ich akzeptiere die <a href="https://badminton-paderborn.de/wp-content/uploads/2020/06/TV_1875_PB_-_Datenschutzerklärung_-_Mitglieder.pdf" target="_blank">Datenschutzerklärung</a> sowie das <a href="https://badminton-paderborn.de/wp-content/uploads/2020/06/Corona_Maßnahmen_Badminton2.0.pdf" target="_blank">Hygienekonzept</a>.';
+            echo '</label>';
+            echo '<label>';
+            if ($age == 'youth')
+            {
+                echo '<input type="submit" name="cf-submitted-youth" value="Absenden" />';
+            }
+            else
+            {
+                echo '<input type="submit" name="cf-submitted-adult" value="Absenden" />';
+            }
+            echo '</label>';
+            echo '</form>';
+        }
     }
 
-    function formValidation($name, $familyname, $date)
+    function formValidation($name, $familyname, $date, $age)
     {
         if ($name == '')
         {
@@ -385,7 +447,7 @@ class Registrator_dev
         $table_name = $wpdb->prefix . "registration_users";
 
         $exists = $wpdb->get_var(
-                    $wpdb->prepare("SELECT COUNT(*) FROM $table_name WHERE name = '$name' AND familyname = '$familyname' AND datum = '$date'")
+                    $wpdb->prepare("SELECT COUNT(*) FROM $table_name WHERE name = '$name' AND familyname = '$familyname' AND datum = '$date' AND age = '$age'")
         );
         if ($exists)
         {
