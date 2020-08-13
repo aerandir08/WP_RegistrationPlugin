@@ -1,0 +1,8 @@
+/* Muss im Theme Ordner liegen. Evtl nach Update neu hinzufügen.*/
+button.custom-button
+{
+    display: inline;
+    color: red;
+    border: none;
+    padding: 5px;
+}

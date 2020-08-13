@@ -16,6 +16,7 @@ class Registrator_dev
         register_activation_hook( __FILE__, array( $this, 'installPlugin' ) );
         register_deactivation_hook( __FILE__, array( $this, 'uninstallPlugin' ) );
 
+        add_action('admin_enqueue_scripts', array($this, 'kb_admin_style'));
         add_action('admin_menu', array($this, 'addBackend'));
 
         add_shortcode( 'registration_form', array( $this, 'shortcode' ));
@@ -34,13 +35,16 @@ class Registrator_dev
     }
 
     // Private
-
     function addBackend()
     {
         add_action('add_date', array($this, 'addDate'));
         add_menu_page('Registrator', 'Registrator', 'manage_options', 'registrator', array($this, 'backend'));
     }
 
+    function kb_admin_style() {
+        wp_enqueue_style('admin-styles', get_template_directory_uri().'/style-admin.css');
+    }
+    
     function backend()
     {
        
@@ -54,6 +58,9 @@ class Registrator_dev
         }
         if (isset($_POST['submit_remove_date']) && check_admin_referer('remove_date_clicked')) {
             $this->removeDate();
+        }
+        if (isset($_POST['submit_delete_sub']) && check_admin_referer('delete_sub_clicked')) {
+            $this->deleteSubscription();
         }
 
         echo '<h1>Registrator Backend</h1>';
@@ -98,12 +105,44 @@ class Registrator_dev
                 echo '<ol>';
                 foreach ($names as $id => $name)
                 {
-                    echo '<li>' . $name . ' ' . $famnames[$id] . '</li>';
+                    $famname = $famnames[$id];
+                    echo '<li>';
+                    
+                    echo '<form class="form-inline" action="options-general.php?page=registrator" method="post">';
+                    wp_nonce_field('delete_sub_clicked');
+                    echo '<input type="hidden" value="' . $name . '" name="cf-name" id="idone"/>';
+                    echo '<input type="hidden" value="' . $famname . '" name="cf-famname" id="idtwo"/>';
+                    echo '<input type="hidden" value="' . $date . '" name="cf-date" id="idthree"/>';
+                    echo '<input type="hidden" value="true" name="submit_delete_sub" />';
+                    echo '<label for="submit">' . $name . ' ' . $famname . '</label>';
+                    echo '<button type="submit" class="custom-button" id="submit">&#10006;</button>';
+                    echo '</form>';
+                    echo '</li>';
                 }
                 echo '</ol>';
                 echo '</p>';
             }
         } 
+    }
+
+    function deleteSubscription()
+    {
+        global $wpdb;
+        if (isset($_POST['submit_delete_sub']))
+        {
+            $name = $_POST["cf-name"];
+            $famname = $_POST["cf-famname"];
+            $date = $_POST["cf-date"];
+
+            // echo '<script type="text/javascript">alert("' . $name . $famname . $date . '");</script>';
+
+            $table_name = $wpdb->prefix . "registration_users";
+
+            $query = "DELETE FROM $table_name WHERE name='$name' AND familyname='$famname' AND datum='$date'";
+            $wpdb->query($query);
+
+            echo '<p>Anmeldung wurde entfernt.</p>';
+        }
     }
 
     function addDate()
