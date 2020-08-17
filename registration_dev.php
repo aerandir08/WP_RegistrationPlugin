@@ -417,7 +417,7 @@ class Registrator_dev
         {
             if ($age == youth)
             {
-                echo '<h2>Jugendtraining</h2>';
+                echo '<h2>Kinder- und Jugendtraining</h2>';
             }
             else
             {
