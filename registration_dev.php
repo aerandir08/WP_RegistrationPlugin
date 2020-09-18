@@ -417,7 +417,7 @@ class Registrator_dev
         {
             if ($age == youth)
             {
-                echo '<h2>Jugendtraining</h2>';
+                echo '<h2>Kinder- und Jugendtraining</h2>';
             }
             else
             {
@@ -454,7 +454,7 @@ class Registrator_dev
             echo '<input type="text" name="cf-familyname" placeholder="Nachname" pattern="[a-zA-Z ]+" value="' . ( isset( $_POST["cf_name"] ) ? esc_attr( $_POST["cf_name"] ) : '' ) . '"/>';
             echo '</label>';
             echo '<label>';
-            echo '<input type="checkbox" name="cf-terms" required> Ich akzeptiere die <a href="https://badminton-paderborn.de/wp-content/uploads/2020/06/TV_1875_PB_-_Datenschutzerklärung_-_Mitglieder.pdf" target="_blank">Datenschutzerklärung</a> sowie das <a href="https://badminton-paderborn.de/wp-content/uploads/2020/08/Corona_Maßnahmen_Badminton3.0.pdf" target="_blank">Hygienekonzept</a>.';
+            echo '<input type="checkbox" name="cf-terms" required> Ich akzeptiere die <a href="https://badminton-paderborn.de/wp-content/uploads/2020/06/TV_1875_PB_-_Datenschutzerklärung_-_Mitglieder.pdf" target="_blank">Datenschutzerklärung</a> sowie das <a href="https://badminton-paderborn.de/wp-content/uploads/2020/08/Corona_Massnahmen_Badminton4.0.pdf" target="_blank">Hygienekonzept</a>.';
             echo '</label>';
             echo '<label>';
             if ($age == 'youth')
