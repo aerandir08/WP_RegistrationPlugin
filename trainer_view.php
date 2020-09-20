@@ -61,12 +61,6 @@ class TrainerView
 
     function trainer_view()
     {
-       
-        if (!current_user_can('manage_options'))
-        {
-            wp_die( __('You do not have sufficient pilchards to access this page.'));
-        }
-
         echo '<h1>Trainer View</h1>';        
         echo '<h2>Anmeldungen</h2>';
         $ages = ['youth', 'adult'];
