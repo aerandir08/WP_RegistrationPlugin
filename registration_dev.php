@@ -472,6 +472,11 @@ class Registrator_dev
 
     function formValidation($name, $familyname, $date, $age)
     {
+        if ($date == '')
+        {
+            return array(FALSE, "Datum ist nicht gesetzt.");
+        }
+
         if ($name == '')
         {
             return array(FALSE, "Vorname darf nicht leer sein.");
